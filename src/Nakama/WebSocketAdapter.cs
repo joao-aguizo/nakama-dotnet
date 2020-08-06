@@ -29,7 +29,7 @@ namespace Nakama
     public class WebSocketAdapter : ISocketAdapter
     {
         private const int KeepAliveIntervalSec = 15;
-        private const int MaxMessageSize = 1024 * 256;
+        private const int DefaultMaxMessageSize = 1024 * 256;
         private const int SendTimeoutSec = 10;
 
         /// <inheritdoc cref="ISocketAdapter.Connected"/>
@@ -58,22 +58,24 @@ namespace Nakama
         private readonly TimeSpan _sendTimeoutSec;
         private CancellationTokenSource _cancellationSource;
         private WebSocket _webSocket;
+        private int _maxMessageSize;
         private Uri _uri;
 
-        public WebSocketAdapter(int keepAliveIntervalSec = KeepAliveIntervalSec, int sendTimeoutSec = SendTimeoutSec) :
+        public WebSocketAdapter(int keepAliveIntervalSec = KeepAliveIntervalSec, int sendTimeoutSec = SendTimeoutSec, int maxMessageSize = DefaultMaxMessageSize) :
             this(new WebSocketClientOptions
             {
                 IncludeExceptionInCloseResponse = true,
                 KeepAliveInterval = TimeSpan.FromSeconds(keepAliveIntervalSec),
                 NoDelay = true
-            }, sendTimeoutSec)
+            }, sendTimeoutSec, maxMessageSize)
         {
         }
 
-        public WebSocketAdapter(WebSocketClientOptions options, int sendTimeoutSec)
+        public WebSocketAdapter(WebSocketClientOptions options, int sendTimeoutSec, int maxMessageSize)
         {
             _options = options;
             _sendTimeoutSec = TimeSpan.FromSeconds(sendTimeoutSec);
+            _maxMessageSize = maxMessageSize;
         }
 
         /// <inheritdoc cref="ISocketAdapter.Close"/>
@@ -164,12 +166,12 @@ namespace Nakama
         public override string ToString()
         {
             return
-                $"WebSocketDriver(IsConnected={IsConnected}, IsConnecting={IsConnecting}, MaxMessageSize={MaxMessageSize}, Uri='{_uri}')";
+                $"WebSocketDriver(IsConnected={IsConnected}, IsConnecting={IsConnecting}, MaxMessageSize={_maxMessageSize}, Uri='{_uri}')";
         }
 
         private async Task ReceiveLoop(WebSocket webSocket, CancellationToken cancellationToken)
         {
-            var buffer = new byte[MaxMessageSize];
+            var buffer = new byte[_maxMessageSize];
             while (true)
             {
                 var result = await webSocket.ReceiveAsync(new ArraySegment<byte>(buffer), cancellationToken)
@@ -208,16 +210,16 @@ namespace Nakama
             var count = result.Count;
             while (!result.EndOfMessage)
             {
-                if (count >= MaxMessageSize)
+                if (count >= _maxMessageSize)
                 {
-                    var closeMessage = $"Maximum message size {MaxMessageSize} bytes reached.";
+                    var closeMessage = $"Maximum message size {_maxMessageSize} bytes reached.";
                     await webSocket.CloseAsync(WebSocketCloseStatus.MessageTooBig, closeMessage,
                         CancellationToken.None);
                     ReceivedError?.Invoke(new WebSocketException(WebSocketError.HeaderError));
                     return new ArraySegment<byte>();
                 }
 
-                result = await webSocket.ReceiveAsync(new ArraySegment<byte>(buffer, count, MaxMessageSize - count),
+                result = await webSocket.ReceiveAsync(new ArraySegment<byte>(buffer, count, _maxMessageSize - count),
                     CancellationToken.None).ConfigureAwait(false);
                 count += result.Count;
             }

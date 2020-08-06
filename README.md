@@ -1,3 +1,10 @@
+This repository is a fork of [Nakama](https://github.com/heroiclabs/nakama. It extends its original WebSocketAdapter class, in order to allow the configuration of its websocket MaxMessageSize.
+
+
+=====================
+Original README file:
+=====================
+
 Nakama .NET
 ===========
 

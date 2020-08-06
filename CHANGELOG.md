@@ -9,6 +9,10 @@ and this project adheres to [Semantic Versioning](http://semver.org/spec/v2.0.0.
 
 - Added parsing support for the Nakama Console API to our protobuf code generator.
 
+## [2.4.1] - 2020-08-06
+### Changed
+- Minor changes in WebSocketAdapter class's constructor, in order to allow configurable websocket maximum message size.
+
 ## [2.4.0] - 2020-05-04 :star:
 ### Added
 - New ListStorageObjectsAsync method and marked ListStorageObjects as obsolete.
